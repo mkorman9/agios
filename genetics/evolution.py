@@ -14,7 +14,7 @@ class Solver(object):
         self._current_best_sample = None
         self._population = [Sample(shape=blueprint.shape) for _ in range(0, POPULATION_SIZE)]
 
-    def step(self) -> np.array:
+    def step(self) -> Tuple[np.array, float]:
         best_score = self._current_best_sample.get_loss(self._blueprint) if self._current_best_sample else float('inf')
         self._sort_population_by_best_scores()
         best_sample = self._perform_crossing_and_get_best()
@@ -22,10 +22,8 @@ class Solver(object):
         if best_sample.get_loss(self._blueprint) < best_score:
             self._current_best_sample = best_sample
 
-        print('Loss: {}'.format(best_score))
-
         self._mutate_population()
-        return self._current_best_sample.get_state()
+        return self._current_best_sample.get_state(), best_score
 
     def _mutate_population(self):
         for i in range(POPULATION_SIZE):

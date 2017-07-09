@@ -5,7 +5,6 @@ import numpy as np
 
 POPULATION_SIZE = 200
 BEST_INDIVIDUALS_TO_TAKE = 2
-MUTATION_CHANCE = 0.001
 
 
 class Solver(object):

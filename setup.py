@@ -6,7 +6,7 @@ with open('requirements.txt') as f:
 version = '1.0'
 
 setup(
-    name='genetics-algorithm',
+    name='genetic-algorithm',
     packages=find_packages(exclude=('tests',)),
     version=version,
     install_requires=[requirement for requirement in requirements if len(requirement) > 0]

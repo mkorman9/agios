@@ -1,8 +1,8 @@
 import sys
 
-from genetics import imaging
-from genetics import windowing
-from genetics import evolution
+from genetic import imaging
+from genetic import windowing
+from genetic import evolution
 
 if __name__ == '__main__':
     blueprint_image_processor = imaging.ImageProcessor()

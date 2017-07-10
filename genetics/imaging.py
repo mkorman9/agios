@@ -13,7 +13,7 @@ class ImageProcessor(object):
         source_pixels = self._normalize_colors(image.getdata())
 
         self._pixels = self._create_image_data(image_height, image_width, source_pixels)
-        self._size = image_width, image_height
+        self._size = (image_height, image_width)
 
     def from_pixels(self, pixels: np.array):
         self._pixels = pixels

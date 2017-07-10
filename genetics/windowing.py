@@ -2,15 +2,16 @@ from typing import Tuple
 import time
 
 from genetics import imaging
+from genetics import evolution
 
 import pygame
 
 
 class Application(object):
     def __init__(self, screen_size: Tuple[int, int]):
-        self._screen_size = screen_size
+        self._screen_size = screen_size[1], screen_size[0]
 
-    def start(self, step_function: callable):
+    def start(self, algorithm: evolution.Algorithm):
         screen = self._initialize_screen()
         done = False
         iteration = 0
@@ -20,7 +21,7 @@ class Application(object):
                 if event.type == pygame.QUIT:
                     done = True
 
-            image_to_render, loss = self._perform_step_and_get_image(step_function)
+            image_to_render, loss = self._perform_step_and_get_result(algorithm)
             print("[{}] {}".format(iteration, loss))
 
             screen.fill((0, 0, 0))
@@ -36,15 +37,16 @@ class Application(object):
         screen = pygame.display.set_mode(self._screen_size)
         return screen
 
-    def _perform_step_and_get_image(self, step_function):
-        sample, loss = step_function()
+    def _perform_step_and_get_result(self, algorithm):
+        algorithm.step()
+        best_result = algorithm.get_best()
 
         current_image_state = imaging.ImageProcessor()
-        current_image_state.from_pixels(sample)
+        current_image_state.from_pixels(best_result.sample.state())
         image = current_image_state.get_image()
 
         return pygame.image.fromstring(
             image.tobytes(),
             image.size,
             image.mode
-        ), loss
+        ), best_result.loss

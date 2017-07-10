@@ -1,77 +1,225 @@
+import abc
+from collections import namedtuple
 from typing import Tuple
 import random
 
 import numpy as np
 
-POPULATION_SIZE = 200
-BEST_INDIVIDUALS_TO_TAKE = 2
+# Loss calculators
 
 
-class Solver(object):
-    def __init__(self, blueprint: np.array):
+class LossCalculator(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def calculate(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> float:
+        pass
+
+
+class SquaredMeanMatrixLossCalculator(LossCalculator):
+    def calculate(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> float:
+        return np.sqrt(
+            np.sum(
+                (sample1.state() - sample2.state()) ** 2
+            )
+        )
+
+# Mutators
+
+
+class Mutator(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def mutate(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+        pass
+
+
+class RandomMatrixAreasMutator(Mutator):
+    def __init__(self, horizontal_size_range: Tuple[int, int], vertical_size_range: Tuple[int, int]):
+        self._horizontal_size_range = horizontal_size_range
+        self._vertical_size_range = vertical_size_range
+
+    def mutate(self, sample: 'NumpyArraySample') -> 'NumpyArraySample':
+        sample_to_create = sample.clone()
+
+        value_to_mix_with = random.random()
+        max_w, max_h = sample_to_create.state().shape
+        x, y = random.randint(0, max_w), random.randint(0, max_h)
+        w, h = random.randint(*self._vertical_size_range), random.randint(*self._horizontal_size_range)
+
+        for i in range(x, min(x + w, max_w)):
+            for j in range(y, min(y + h, max_h)):
+                sample_to_create.state()[i, j] = (sample_to_create.state()[i, j] + value_to_mix_with) / 2
+
+        return sample_to_create
+
+# Crossers
+
+
+class Crosser(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def cross(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> 'SampleGeneric':
+        pass
+
+
+class MeanValueMatrixCrosser(Crosser):
+    def cross(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> 'SampleGeneric':
+        return sample1.factory().create(
+            state=(sample1.state() + sample2.state()) / 2
+        )
+
+# Sample generics
+
+
+class SampleGeneric(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def state(self):
+        pass
+
+    def clone(self) -> 'SampleGeneric':
+        return self.factory().clone(self)
+
+    def factory(self) -> 'SampleFactory':
+        return GenericFactory(self.__class__)
+
+    def mutated(self, mutator: 'Mutator') -> 'SampleGeneric':
+        return mutator.mutate(self)
+
+    def cross_with(self, sample2: 'SampleGeneric', crosser: 'Crosser') -> 'SampleGeneric':
+        return crosser.cross(self, sample2)
+
+    def calculate_loss_to(self, blueprint: 'SampleGeneric', loss_calculator: LossCalculator):
+        return loss_calculator.calculate(self, blueprint)
+
+
+class NumpyArraySample(SampleGeneric):
+    def __init__(self, state: np.array):
+        self._state = np.copy(state)
+
+    def state(self) -> np.array:
+        return self._state
+
+
+class SampleFactory(object):
+    @abc.abstractmethod
+    def create(self, **kwargs) -> 'SampleGeneric':
+        pass
+
+    @abc.abstractmethod
+    def clone(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+        pass
+
+
+class GenericFactory(SampleFactory):
+    def __init__(self, proxied_type: callable):
+        self.proxied_type = proxied_type
+
+    def create(self, **kwargs) -> 'SampleGeneric':
+        return self.proxied_type(**kwargs)
+
+    def clone(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+        return self.create(state=sample.state())
+
+
+# State generator
+
+class SampleStateGenerator(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def generate(self) -> object:
+        pass
+
+
+class RandomMatrixGenerator(SampleStateGenerator):
+    def __init__(self, rows: int, columns: int):
+        self._shape = (rows, columns)
+
+    def generate(self) -> object:
+        return np.random.random(self._shape)
+
+
+# Algorithm itself
+
+SampleAndItsLoss = namedtuple('SampleAndItsLoss', ['sample', 'loss'])
+
+
+class Algorithm(object):
+    def __init__(self,
+                 population_size: int,
+                 best_samples_to_take: int,
+                 blueprint: 'SampleGeneric',
+                 mutator: 'Mutator',
+                 crosser: 'Crosser',
+                 loss_calculator: 'LossCalculator',
+                 initial_sample_state_generator: 'SampleStateGenerator'):
+        self._population_size = population_size
+        self._best_samples_to_take = best_samples_to_take
         self._blueprint = blueprint
-        self._current_best_sample = None
-        self._population = [Sample(shape=blueprint.shape) for _ in range(0, POPULATION_SIZE)]
+        self._mutator = mutator
+        self._crosser = crosser
+        self._loss_calculator = loss_calculator
+        self._initial_sample_state_generator = initial_sample_state_generator
 
-    def step(self) -> Tuple[np.array, float]:
-        current_best_score = self._get_best_score()
+        self._best_sample_and_loss = SampleAndItsLoss(
+            sample=None,
+            loss=float('inf')
+        )
+
+        self._population = self._generate_population(blueprint.factory())
+
+    def step(self):
+        currently_lowest_loss = self._evaluate_lowest_loss()
         self._sort_population_by_best_scores()
         tournament_winner = self._perform_crossing_and_get_best()
-
-        if tournament_winner.get_loss(self._blueprint) < current_best_score:
-            self._current_best_sample = tournament_winner
-
+        currently_best_sample, is_better = self._evaluate_best_sample(tournament_winner, currently_lowest_loss)
         self._mutate_population()
-        return self._current_best_sample.get_state(), current_best_score
 
-    def _get_best_score(self):
-        return self._current_best_sample.get_loss(self._blueprint) if self._current_best_sample else float('inf')
+        if is_better:
+            self._best_sample_and_loss = SampleAndItsLoss(
+                sample=currently_best_sample,
+                loss=currently_lowest_loss
+            )
+
+    def get_best(self) -> 'SampleAndItsLoss':
+        return self._best_sample_and_loss
+
+    def _generate_population(self, samples_factory):
+        population = []
+        for _ in range(self._population_size):
+            population.append(
+                samples_factory.create(state=self._initial_sample_state_generator.generate())
+            )
+        return population
+
+    def _evaluate_best_sample(self, tournament_winner, currently_lowest_loss):
+        currently_best_sample = None
+        loss = self._loss_calculator.calculate(tournament_winner, self._blueprint)
+        is_better = False
+
+        if loss < currently_lowest_loss:
+            currently_best_sample = tournament_winner
+            is_better = True
+
+        return currently_best_sample, is_better
+
+    def _evaluate_lowest_loss(self):
+        return self._loss_calculator.calculate(self._best_sample_and_loss.sample, self._blueprint) \
+            if self._best_sample_and_loss.sample \
+            else float('inf')
 
     def _mutate_population(self):
-        for i in range(POPULATION_SIZE):
-            self._population[i].perform_random_mutation()
+        for i in range(self._population_size):
+            self._population[i] = self._population[i].mutated(self._mutator)
 
     def _sort_population_by_best_scores(self):
         self._population = sorted(
             self._population,
-            key=lambda individual: individual.get_loss(self._blueprint)
+            key=lambda individual: self._loss_calculator.calculate(individual, self._blueprint)
         )
 
     def _perform_crossing_and_get_best(self):
-        best_individuals = self._population[:BEST_INDIVIDUALS_TO_TAKE]
+        best_individuals = self._population[:self._best_samples_to_take]
         best_genome_sample = best_individuals[0]
         for i in range(1, len(best_individuals)):
-            best_genome_sample = best_genome_sample.perform_crossing(best_individuals[i])
+            best_genome_sample = best_genome_sample.cross_with(best_individuals[i], self._crosser)
 
-        for i in range(BEST_INDIVIDUALS_TO_TAKE, POPULATION_SIZE):
-            self._population[i] = self._population[i].perform_crossing(best_genome_sample)
+        for i in range(self._best_samples_to_take, self._population_size):
+            self._population[i] = self._population[i].cross_with(best_genome_sample, self._crosser)
 
         return best_genome_sample
-
-
-class Sample(object):
-    def __init__(self, parent: np.array=None, shape: Tuple[int, int]=None):
-        self._state = np.copy(parent) if parent is not None else np.random.random(shape)
-
-    def get_state(self) -> np.array:
-        return self._state
-
-    def get_loss(self, blueprint: np.array):
-        return np.sqrt(
-            np.sum(
-                (self._state - blueprint) ** 2
-            )
-        )
-
-    def perform_random_mutation(self):
-        color = random.random()
-        max_w, max_h = self._state.shape
-        x, y = random.randint(0, max_w), random.randint(0, max_h)
-        w, h = random.randint(10, 50), random.randint(10, 50)
-
-        for i in range(x, min(x + w, max_w)):
-            for j in range(y, min(y + h, max_h)):
-                self._state[i, j] = (self._state[i, j] + color) / 2
-
-    def perform_crossing(self, other_sample: 'Sample') -> 'Sample':
-        return Sample((self._state + other_sample._state) / 2)

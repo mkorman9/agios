@@ -62,7 +62,7 @@ class Crosser(object, metaclass=abc.ABCMeta):
 class MeanValueMatrixCrosser(Crosser):
     def cross(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> 'SampleGeneric':
         return sample1.factory().create(
-            state=(sample1.state() + sample2.state()) / 2
+            (sample1.state() + sample2.state()) / 2
         )
 
 # Sample generics
@@ -99,7 +99,7 @@ class NumpyArraySample(SampleGeneric):
 
 class SampleFactory(object):
     @abc.abstractmethod
-    def create(self, **kwargs) -> 'SampleGeneric':
+    def create(self, *args, **kwargs) -> 'SampleGeneric':
         pass
 
     @abc.abstractmethod
@@ -111,8 +111,8 @@ class GenericFactory(SampleFactory):
     def __init__(self, proxied_type: callable):
         self.proxied_type = proxied_type
 
-    def create(self, **kwargs) -> 'SampleGeneric':
-        return self.proxied_type(**kwargs)
+    def create(self, *args, **kwargs) -> 'SampleGeneric':
+        return self.proxied_type(*args, **kwargs)
 
     def clone(self, sample: 'SampleGeneric') -> 'SampleGeneric':
         return self.create(state=sample.state())

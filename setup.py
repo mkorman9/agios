@@ -13,7 +13,7 @@ setup(
     author='Michal Korman',
     author_email='m.korman94@gmail.com',
     url='https://github.com/mkorman9/agios',
-    download_url='https://github.com/mkorman9/framepy/agios/{}'.format(version),
+    download_url='https://github.com/mkorman9/agios/tarball/{}'.format(version),
     keywords='ai genetic algorithms',
     classifiers=[
         'Topic :: Scientific/Engineering :: Artificial Intelligence'

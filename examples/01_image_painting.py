@@ -1,11 +1,9 @@
-import sys
-
 from agios import evolution
 from agios import extras
 from examples.util import windowing
 
 if __name__ == '__main__':
-    blueprint = extras.load_normalized_greyscale_image(sys.argv[1])
+    blueprint = extras.load_normalized_greyscale_image('input/mona_lisa.jpg')
 
     evolution_problem_solver = evolution.Algorithm(
         population_size=200,

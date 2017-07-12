@@ -1,7 +1,9 @@
 from setuptools import setup
 
-with open('requirements.txt') as f:
-    requirements = f.readlines()
+
+def read(file_path):
+    with open(file_path) as f:
+        return [line for line in f.readlines() if len(line) > 0]
 
 version = 'dynamic-dev'
 
@@ -18,5 +20,6 @@ setup(
     classifiers=[
         'Topic :: Scientific/Engineering :: Artificial Intelligence'
     ],
-    install_requires=[requirement for requirement in requirements if len(requirement) > 0]
+    install_requires=read('requirements.txt'),
+    tests_require=read('test-requirements.txt')
 )

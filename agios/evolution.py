@@ -231,7 +231,7 @@ class Algorithm(object):
 
         if is_better:
             self._best_sample_and_loss = SampleAndItsLoss(
-                sample=currently_best_sample,
+                sample= currently_best_sample,
                 loss=currently_lowest_loss
             )
 

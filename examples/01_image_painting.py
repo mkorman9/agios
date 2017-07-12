@@ -1,8 +1,8 @@
 import sys
 
-from agios import extras
-from agios import windowing
 from agios import evolution
+from agios import extras
+from examples.util import windowing
 
 if __name__ == '__main__':
     blueprint = extras.load_normalized_greyscale_image(sys.argv[1])

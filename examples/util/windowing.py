@@ -33,7 +33,7 @@ class Application(object):
 
     def _initialize_screen(self):
         pygame.init()
-        pygame.display.set_caption('agios algorithm')
+        pygame.display.set_caption('agios example')
         screen = pygame.display.set_mode(self._screen_size)
         return screen
 

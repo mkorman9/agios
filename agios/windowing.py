@@ -1,8 +1,8 @@
 from typing import Tuple
 import time
 
-from genetic import imaging
-from genetic import evolution
+from agios import imaging
+from agios import evolution
 
 import pygame
 
@@ -33,7 +33,7 @@ class Application(object):
 
     def _initialize_screen(self):
         pygame.init()
-        pygame.display.set_caption('genetic algorithm')
+        pygame.display.set_caption('agios algorithm')
         screen = pygame.display.set_mode(self._screen_size)
         return screen
 

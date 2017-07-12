@@ -31,6 +31,18 @@ class Mutator(object, metaclass=abc.ABCMeta):
         pass
 
 
+class RandomMatrixFieldChangeMutator(Mutator):
+    def mutate(self, sample: 'NumpyArraySample') -> 'NumpyArraySample':
+        sample_to_create = sample.clone()
+        matrix = sample_to_create.state()
+
+        max_w, max_h = matrix.shape
+        x, y = random.randint(0, max_w - 1), random.randint(0, max_h - 1)
+        matrix[x, y] = (matrix[x, y] + random.random()) / 2
+
+        return sample_to_create
+
+
 class RandomMatrixAreasMutator(Mutator):
     def __init__(self, horizontal_size_range: Tuple[int, int], vertical_size_range: Tuple[int, int]):
         self._horizontal_size_range = horizontal_size_range
@@ -49,6 +61,53 @@ class RandomMatrixAreasMutator(Mutator):
                 sample_to_create.state()[i, j] = (sample_to_create.state()[i, j] + value_to_mix_with) / 2
 
         return sample_to_create
+
+
+class SimplePaintbrushMatrixMutator(Mutator):
+    def __init__(self, brush_widths_range=(1, 4), moves_length_range=(1, 10)):
+        self._brush_widths_range = brush_widths_range
+        self._moves_length_range = moves_length_range
+
+    def mutate(self, sample: 'NumpyArraySample') -> 'NumpyArraySample':
+        sample_to_create = sample.clone()
+        matrix = sample_to_create.state()
+        W, H = matrix.shape
+
+        brush_position = np.array([random.randint(0, W - 1), random.randint(0, H - 1)])
+        brush_width = random.randint(*self._brush_widths_range)
+        move_length = random.randint(*self._moves_length_range)
+        move_directions = np.array([random.randint(-1, 1), random.randint(-1, 1)])
+        value = random.random()
+
+        moves_done = 0
+        while moves_done != move_length:
+            x, y = brush_position[0], brush_position[1]
+            if x < 0 or x >= W or y < 0 or y >= H:
+                break
+            matrix[x, y] = (matrix[x, y] + value) / 2
+            self._fill_vertical(matrix, x, y, W, brush_width, value)
+            self._fill_horizontal(matrix, x, y, H, brush_width, value)
+            brush_position += move_directions
+            moves_done += 1
+
+        return sample_to_create
+
+    def _fill_vertical(self, matrix, x, y, max_x, length, value):
+        for i in range(x, min(x + (length // 2), max_x)):
+            distance_covered = abs(x - i) or 1
+            matrix[i, y] = (matrix[i, y] + (value / distance_covered)) / 2
+        for i in range(x, max(x - (length // 2), 0, -1)):
+            distance_covered = abs(x - i) or 1
+            matrix[i, y] = (matrix[i, y] + (value / distance_covered)) / 2
+
+    def _fill_horizontal(self, matrix, x, y, max_y, length, value):
+        for i in range(y, min(y + (length // 2), max_y)):
+            distance_covered = abs(y - i) or 1
+            matrix[x, i] = (matrix[x, i] + (value / distance_covered)) / 2
+        for i in range(y, max(y - (length // 2), 0, -1)):
+            distance_covered = abs(y - i) or 1
+            matrix[x, i] = (matrix[x, i] + (value / distance_covered)) / 2
+
 
 # Crossers
 

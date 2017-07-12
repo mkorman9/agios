@@ -1,7 +1,7 @@
 from typing import Tuple
 import time
 
-from agios import imaging
+from agios import extras
 from agios import evolution
 
 import pygame
@@ -41,9 +41,7 @@ class Application(object):
         algorithm.step()
         best_result = algorithm.get_best()
 
-        current_image_state = imaging.ImageProcessor()
-        current_image_state.from_pixels(best_result.sample.state())
-        image = current_image_state.get_image()
+        image = extras.create_rgb_image_from_matrix(best_result.sample.state())
 
         return pygame.image.fromstring(
             image.tobytes(),

@@ -186,8 +186,8 @@ class SampleStateGenerator(object, metaclass=abc.ABCMeta):
 
 
 class RandomMatrixGenerator(SampleStateGenerator):
-    def __init__(self, rows: int, columns: int):
-        self._shape = (rows, columns)
+    def __init__(self, shape=(100, 100)):
+        self._shape = shape
 
     def generate(self) -> object:
         return np.random.random(self._shape)

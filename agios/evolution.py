@@ -193,6 +193,14 @@ class RandomMatrixGenerator(SampleStateGenerator):
         return np.random.random(self._shape)
 
 
+class ZeroMatrixGenerator(SampleStateGenerator):
+    def __init__(self, shape=(100, 100)):
+        self._shape = shape
+
+    def generate(self) -> object:
+        return np.zeros(self._shape)
+
+
 # Algorithm itself
 
 SampleAndItsLoss = namedtuple('SampleAndItsLoss', ['sample', 'loss'])

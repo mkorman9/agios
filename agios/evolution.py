@@ -215,12 +215,12 @@ class Algorithm(object):
         self._loss_calculator = loss_calculator
         self._initial_sample_state_generator = initial_sample_state_generator
 
-        self._best_sample_and_loss = SampleAndItsLoss(
-            sample=None,
-            loss=float('inf')
-        )
-
+        self._statistics = Statistics()
         self._population = self._generate_population(blueprint.factory())
+        self._best_sample_and_loss = SampleAndItsLoss(
+            sample=self._population[0],
+            loss=self._loss_calculator.calculate(self._population[0], self._blueprint)
+        )
 
     def step(self):
         currently_lowest_loss = self._evaluate_lowest_loss()
@@ -229,14 +229,19 @@ class Algorithm(object):
         currently_best_sample, is_better = self._evaluate_best_sample(tournament_winner, currently_lowest_loss)
         self._mutate_population()
 
-        if is_better:
+        if is_better or self._best_sample_and_loss is None:
             self._best_sample_and_loss = SampleAndItsLoss(
-                sample= currently_best_sample,
+                sample=currently_best_sample,
                 loss=currently_lowest_loss
             )
 
+        self._statistics.add_observation(currently_lowest_loss)
+
     def get_best(self) -> 'SampleAndItsLoss':
         return self._best_sample_and_loss
+
+    def statistics(self) -> 'Statistics':
+        return self._statistics
 
     def _generate_population(self, samples_factory):
         population = []
@@ -258,9 +263,7 @@ class Algorithm(object):
         return currently_best_sample, is_better
 
     def _evaluate_lowest_loss(self):
-        return self._loss_calculator.calculate(self._best_sample_and_loss.sample, self._blueprint) \
-            if self._best_sample_and_loss.sample \
-            else float('inf')
+        return self._loss_calculator.calculate(self._best_sample_and_loss.sample, self._blueprint)
 
     def _mutate_population(self):
         for i in range(self._population_size):
@@ -282,3 +285,32 @@ class Algorithm(object):
             self._population[i] = self._population[i].cross_with(best_genome_sample, self._crosser)
 
         return best_genome_sample
+
+
+# Statistics
+
+
+class Statistics(object):
+    def __init__(self):
+        self.iterations = 0
+        self.current_loss = 0
+        self.current_speed = 0
+        self.average_speed = 0
+
+        self._last_loss = 0
+
+    def to_dict(self):
+        return {
+            'iterations': self.iterations,
+            'current_loss': self.current_loss,
+            'current_speed': self.current_speed,
+            'average_speed': self.average_speed
+        }
+
+    def add_observation(self, loss: float):
+        self.iterations += 1
+        self.current_loss = loss
+        if self.iterations > 1:
+            self.current_speed = abs(self.current_loss - self._last_loss)
+            self.average_speed = self.average_speed + ((self.current_speed - self.average_speed) / self.iterations)
+        self._last_loss = loss

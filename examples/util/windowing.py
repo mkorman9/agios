@@ -22,7 +22,7 @@ class Application(object):
                     done = True
 
             image_to_render, loss = self._perform_step_and_get_result(algorithm)
-            print("[{}] {}".format(iteration, loss))
+            print(algorithm.statistics().to_dict())
 
             screen.fill((0, 0, 0))
             screen.blit(image_to_render, (0, 0))

@@ -39,7 +39,7 @@ class Application(object):
 
     def _perform_step_and_get_result(self, algorithm):
         algorithm.step()
-        best_result = algorithm.get_best()
+        best_result = algorithm.best()
 
         image = extras.create_rgb_image_from_matrix(best_result.sample.state())
 

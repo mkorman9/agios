@@ -230,7 +230,7 @@ class Executor(object, metaclass=abc.ABCMeta):
         pass
 
 
-class SingleThreadedExecutor(Executor):
+class SimpleExecutor(Executor):
     def __init__(self):
         self._population = None
 
@@ -276,7 +276,7 @@ class Algorithm(object):
                  crosser: 'Crosser',
                  loss_calculator: 'LossCalculator',
                  initial_sample_state_generator: 'SampleStateGenerator',
-                 executor: 'Executor'=SingleThreadedExecutor()):
+                 executor: 'Executor'=SimpleExecutor()):
         self._population_size = population_size
         self._best_samples_to_take = best_samples_to_take
         self._blueprint = blueprint

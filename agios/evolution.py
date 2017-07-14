@@ -1,14 +1,13 @@
 import abc
-from collections import namedtuple
-from datetime import datetime
-from typing import Tuple, List
 import random
-from concurrent.futures import ThreadPoolExecutor
-
-import numpy as np
-
 # Loss calculators
 import time
+from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from typing import Tuple, List
+
+import numpy as np
 
 
 class LossCalculator(object, metaclass=abc.ABCMeta):
@@ -434,7 +433,7 @@ class Statistics(object):
         self.learning_rate = 0
 
         self._last_loss = 0
-        self._last_time = datetime.now()
+        self._last_time = time.time()
 
     def to_dict(self):
         return {
@@ -448,7 +447,7 @@ class Statistics(object):
         }
 
     def add_observation(self, loss: float):
-        self.time_per_last_iteration = (datetime.now() - self._last_time).microseconds / 1000
+        self.time_per_last_iteration = (time.time() - self._last_time) * 1000
         self.iterations += 1
         self.current_loss = loss
 
@@ -465,4 +464,4 @@ class Statistics(object):
         self.learning_rate = self.average_speed / self.average_time_per_iteration
 
         self._last_loss = loss
-        self._last_time = datetime.now()
+        self._last_time = time.time()

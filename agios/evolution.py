@@ -302,23 +302,20 @@ class MultithreadedExecutor(Executor):
         return population_of_populations[:best_samples_to_take]
 
     def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
-        with ThreadPoolExecutor(max_workers=self._threads_count) as pool:
-            tasks = []
-            for executor in self._executors:
-                tasks.append(
-                    pool.submit(executor.perform_crossing_with_best_samples, crosser, best_samples)
-                )
-
-            while not all([task.done() for task in tasks]):
-                time.sleep(0)
+        self._execute_in_pool_and_wait_for_results(
+            lambda pool, executor: pool.submit(executor.perform_crossing_with_best_samples, crosser, best_samples)
+        )
 
     def perform_mutation(self, mutator: 'Mutator'):
+        self._execute_in_pool_and_wait_for_results(
+            lambda pool, executor: pool.submit(executor.perform_mutation, mutator)
+        )
+
+    def _execute_in_pool_and_wait_for_results(self, operation):
         with ThreadPoolExecutor(max_workers=self._threads_count) as pool:
             tasks = []
             for executor in self._executors:
-                tasks.append(
-                    pool.submit(executor.perform_mutation, mutator)
-                )
+                tasks.append(operation(pool, executor))
 
             while not all([task.done() for task in tasks]):
                 time.sleep(0)

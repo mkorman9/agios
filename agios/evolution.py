@@ -2,10 +2,12 @@ import abc
 from collections import namedtuple
 from typing import Tuple, List
 import random
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 
 # Loss calculators
+import time
 
 
 class LossCalculator(object, metaclass=abc.ABCMeta):
@@ -265,6 +267,61 @@ class SimpleExecutor(Executor):
     def perform_mutation(self, mutator: 'Mutator'):
         for i in range(len(self._population)):
             self._population[i] = self._population[i].mutated(mutator)
+
+    def population(self) -> List['SampleGeneric']:
+        return self._population
+
+
+class MultithreadedExecutor(Executor):
+    def __init__(self, threads_count: int=4):
+        self._threads_count = threads_count
+        self._executors = None
+
+    def generate_initial_population(self,
+                                    samples_factory: 'SampleFactory',
+                                    initial_sample_state_generator: 'SampleStateGenerator',
+                                    population_size: int):
+        self._executors = []
+        for i in range(self._threads_count):
+            executor = SimpleExecutor()
+            executor.generate_initial_population(samples_factory, initial_sample_state_generator, population_size)
+            self._executors.append(executor)
+
+    def resolve_best_samples(self,
+                             loss_calculator: 'LossCalculator',
+                             blueprint: 'SampleGeneric',
+                             best_samples_to_take: int) -> List['SampleGeneric']:
+        population_of_populations = []
+        for executor in self._executors:
+            population_of_populations.extend(executor.population())
+
+        population_of_populations = sorted(
+            population_of_populations,
+            key=lambda individual: loss_calculator.calculate(individual, blueprint)
+        )
+        return population_of_populations[:best_samples_to_take]
+
+    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
+        with ThreadPoolExecutor(max_workers=self._threads_count) as pool:
+            tasks = []
+            for executor in self._executors:
+                tasks.append(
+                    pool.submit(executor.perform_crossing_with_best_samples, crosser, best_samples)
+                )
+
+            while not all([task.done() for task in tasks]):
+                time.sleep(0)
+
+    def perform_mutation(self, mutator: 'Mutator'):
+        with ThreadPoolExecutor(max_workers=self._threads_count) as pool:
+            tasks = []
+            for executor in self._executors:
+                tasks.append(
+                    pool.submit(executor.perform_mutation, mutator)
+                )
+
+            while not all([task.done() for task in tasks]):
+                time.sleep(0)
 
 
 class Algorithm(object):

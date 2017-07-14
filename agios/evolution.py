@@ -1,5 +1,6 @@
 import abc
 from collections import namedtuple
+from datetime import datetime
 from typing import Tuple, List
 import random
 from concurrent.futures import ThreadPoolExecutor
@@ -425,21 +426,33 @@ class Statistics(object):
         self.current_loss = 0
         self.current_speed = 0
         self.average_speed = 0
+        self.time_per_last_iteration = 0
+        self.average_time_per_iteration = 0
 
         self._last_loss = 0
+        self._last_time = datetime.now()
 
     def to_dict(self):
         return {
             'iterations': self.iterations,
             'current_loss': self.current_loss,
             'current_speed': self.current_speed,
-            'average_speed': self.average_speed
+            'average_speed': self.average_speed,
+            'time_per_last_iteration': self.time_per_last_iteration,
+            'average_time_per_iteration': self.average_time_per_iteration
         }
 
     def add_observation(self, loss: float):
+        self.time_per_last_iteration = (datetime.now() - self._last_time).microseconds / 1000
         self.iterations += 1
         self.current_loss = loss
+
         if self.iterations > 1:
             self.current_speed = abs(self.current_loss - self._last_loss)
             self.average_speed = self.average_speed + ((self.current_speed - self.average_speed) / self.iterations)
+
+            self.average_time_per_iteration = self.average_time_per_iteration + \
+                                              ((self.time_per_last_iteration - self.average_time_per_iteration) / self.iterations)
+
         self._last_loss = loss
+        self._last_time = datetime.now()

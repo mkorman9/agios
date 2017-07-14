@@ -365,7 +365,7 @@ class GenericSolver(StatisticsCollecting, BestSampleSaving, metaclass=abc.ABCMet
         pass
 
 
-class Solver(GenericSolver):
+class BasicSolver(GenericSolver):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,

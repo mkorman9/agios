@@ -12,7 +12,7 @@ class Application(object):
         self._screen_size = screen_size[1], screen_size[0]
         self._colorspace = colorspace
 
-    def start(self, algorithm: evolution.Solver):
+    def start(self, algorithm: evolution.BasicSolver):
         screen = self._initialize_screen()
         done = False
         iteration = 0

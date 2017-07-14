@@ -6,7 +6,7 @@ if __name__ == '__main__':
     colorspace = extras.Red
     blueprint = extras.load_normalized_image('input/lena.png', colorspace)
 
-    evolution_problem_solver = evolution.Solver(
+    evolution_problem_solver = evolution.BasicSolver(
         population_size=100,
         best_samples_to_take=2,
         blueprint=evolution.NumpyArraySample(blueprint),

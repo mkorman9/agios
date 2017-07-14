@@ -321,7 +321,36 @@ class MultithreadedExecutor(Executor):
                 time.sleep(0)
 
 
-class Algorithm(object):
+class StatisticsCollecting(object):
+    def __init__(self):
+        self._statistics = Statistics()
+
+    def statistics(self) -> 'Statistics':
+        return self._statistics
+
+    def _add_observation(self, loss: float):
+        self._statistics.add_observation(loss)
+
+
+class BestSampleSaving(object):
+    def __init__(self):
+        self._best_sample_and_loss = None
+
+    def best(self) -> 'SampleAndItsLoss':
+        return self._best_sample_and_loss
+
+    def set_best_if_better_than_current(self, sample: SampleGeneric, loss: float):
+        if loss < self._best_sample_and_loss.loss:
+            self.force_new_best(sample, loss)
+
+    def force_new_best(self, sample: SampleGeneric, loss: float):
+        self._best_sample_and_loss = SampleAndItsLoss(
+            sample=sample,
+            loss=loss
+        )
+
+
+class Solver(StatisticsCollecting, BestSampleSaving):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
@@ -331,6 +360,9 @@ class Algorithm(object):
                  loss_calculator: 'LossCalculator',
                  initial_sample_state_generator: 'SampleStateGenerator',
                  executor: 'Executor'=SimpleExecutor()):
+        StatisticsCollecting.__init__(self)
+        BestSampleSaving.__init__(self)
+
         self._population_size = population_size
         self._best_samples_to_take = best_samples_to_take
         self._blueprint = blueprint
@@ -340,26 +372,19 @@ class Algorithm(object):
         self._initial_sample_state_generator = initial_sample_state_generator
         self._executor = executor
 
-        self._statistics = Statistics()
-
-        self._best_sample_and_loss = None
         self._generate_initial_population()
 
     def step(self):
         self._perform_crossing_with_best_samples()
+        self._mutate_population()
         current_generation_best_individual = self._evaluate_best_sample_and_its_loss()
 
-        if current_generation_best_individual.loss < self._best_sample_and_loss.loss:
-            self._best_sample_and_loss = current_generation_best_individual
+        self.set_best_if_better_than_current(
+            sample=current_generation_best_individual.sample,
+            loss=current_generation_best_individual.loss
+        )
 
-        self._mutate_population()
-        self._statistics.add_observation(current_generation_best_individual.loss)
-
-    def best(self) -> 'SampleAndItsLoss':
-        return self._best_sample_and_loss
-
-    def statistics(self) -> 'Statistics':
-        return self._statistics
+        self._add_observation(current_generation_best_individual.loss)
 
     def _generate_initial_population(self):
         self._executor.generate_initial_population(
@@ -367,8 +392,9 @@ class Algorithm(object):
             self._initial_sample_state_generator,
             self._population_size
         )
+
         best_sample = self._executor.resolve_best_samples(self._loss_calculator, self._blueprint, 1)[0]
-        self._best_sample_and_loss = SampleAndItsLoss(
+        self.force_new_best(
             sample=best_sample,
             loss=self._loss_calculator.calculate(best_sample, self._blueprint)
         )

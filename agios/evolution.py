@@ -355,7 +355,17 @@ class BestSampleSaving(object):
         )
 
 
-class Solver(StatisticsCollecting, BestSampleSaving):
+class GenericSolver(StatisticsCollecting, BestSampleSaving, metaclass=abc.ABCMeta):
+    def __init__(self):
+        StatisticsCollecting.__init__(self)
+        BestSampleSaving.__init__(self)
+
+    @abc.abstractmethod
+    def step(self):
+        pass
+
+
+class Solver(GenericSolver):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,

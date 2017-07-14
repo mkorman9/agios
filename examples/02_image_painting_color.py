@@ -13,8 +13,7 @@ if __name__ == '__main__':
         mutator=evolution.SimplePaintbrushMatrixMutator((10, 15), (10, 50)),
         crosser=evolution.MeanValueMatrixCrosser(),
         loss_calculator=evolution.SquaredMeanMatrixLossCalculator(),
-        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape),
-        executor=evolution.MultithreadedExecutor(2)
+        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape)
     )
 
     renderer = windowing.Application(blueprint.shape, colorspace)

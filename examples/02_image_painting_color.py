@@ -3,7 +3,8 @@ from agios import extras
 from examples.util import windowing
 
 if __name__ == '__main__':
-    blueprint = extras.load_normalized_greyscale_image('input/mona_lisa.jpg')
+    colorspace = extras.RGB
+    blueprint = extras.load_normalized_image('input/lena.png', colorspace)
 
     evolution_problem_solver = evolution.Algorithm(
         population_size=100,
@@ -12,9 +13,8 @@ if __name__ == '__main__':
         mutator=evolution.SimplePaintbrushMatrixMutator((10, 15), (10, 50)),
         crosser=evolution.MeanValueMatrixCrosser(),
         loss_calculator=evolution.SquaredMeanMatrixLossCalculator(),
-        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape),
-        executor=evolution.MultithreadedExecutor(2)
+        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape)
     )
 
-    renderer = windowing.Application(blueprint.shape)
+    renderer = windowing.Application(blueprint.shape, colorspace)
     renderer.start(evolution_problem_solver)

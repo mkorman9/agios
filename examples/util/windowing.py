@@ -8,8 +8,9 @@ import pygame
 
 
 class Application(object):
-    def __init__(self, screen_size: Tuple[int, int]):
+    def __init__(self, screen_size: Tuple[int, int], colorspace: extras.ImageFormat):
         self._screen_size = screen_size[1], screen_size[0]
+        self._colorspace = colorspace
 
     def start(self, algorithm: evolution.Algorithm):
         screen = self._initialize_screen()
@@ -41,7 +42,7 @@ class Application(object):
         algorithm.step()
         best_result = algorithm.best()
 
-        image = extras.create_rgb_image_from_matrix(best_result.sample.state())
+        image = extras.create_rgb_image_from_matrix(best_result.sample.state(), self._colorspace)
 
         return pygame.image.fromstring(
             image.tobytes(),

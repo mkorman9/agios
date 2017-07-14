@@ -11,11 +11,23 @@ Greyscale = ImageFormat(
     pack_function=lambda color: color,
     unpack_function=lambda color: color
 )
-RGB = ImageFormat(
+Red = ImageFormat(
     symbol='RGB',
-    max_channel_value=0xffffff,
-    pack_function=lambda color: ((color[0] << 16) + (color[1] << 8) + color[2]),
-    unpack_function=lambda color: ((color & 0xff0000) >> 16, (color & 0x00ff00) >> 8, (color & 0x0000ff))
+    max_channel_value=0xff0000,
+    pack_function=lambda color: (color[0] << 16),
+    unpack_function=lambda color: (color & 0xff0000) >> 16
+)
+Green = ImageFormat(
+    symbol='RGB',
+    max_channel_value=0xff00,
+    pack_function=lambda color: (color[1] << 8),
+    unpack_function=lambda color: (color & 0xf00ff00) >> 8
+)
+Blue = ImageFormat(
+    symbol='RGB',
+    max_channel_value=0xff,
+    pack_function=lambda color: color[2],
+    unpack_function=lambda color: color
 )
 
 

@@ -375,8 +375,7 @@ class Solver(GenericSolver):
                  loss_calculator: 'LossCalculator',
                  initial_sample_state_generator: 'SampleStateGenerator',
                  executor: 'Executor'=SimpleExecutor()):
-        StatisticsCollecting.__init__(self)
-        BestSampleSaving.__init__(self)
+        GenericSolver.__init__(self)
 
         self._population_size = population_size
         self._best_samples_to_take = best_samples_to_take

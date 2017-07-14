@@ -273,8 +273,11 @@ class SimpleExecutor(Executor):
 
 
 class MultithreadedExecutor(Executor):
+    WAIT_EPSILON = 0.00001
+
     def __init__(self, threads_count: int=4):
         self._threads_count = threads_count
+        self._pool = ThreadPoolExecutor(max_workers=threads_count)
         self._executors = None
 
     def generate_initial_population(self,
@@ -313,15 +316,14 @@ class MultithreadedExecutor(Executor):
         )
 
     def _execute_in_pool_and_wait_for_results(self, operation):
-        with ThreadPoolExecutor(max_workers=self._threads_count) as pool:
-            tasks = []
-            for executor in self._executors:
-                tasks.append(operation(pool, executor))
+        tasks = []
+        for executor in self._executors:
+            tasks.append(operation(self._pool, executor))
 
-            while not all([task.done() for task in tasks]):
-                time.sleep(0)
+        while not all([task.done() for task in tasks]):
+            time.sleep(self.WAIT_EPSILON)
 
-            return [task.result() for task in tasks]
+        return [task.result() for task in tasks]
 
 
 class StatisticsCollecting(object):

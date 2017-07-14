@@ -428,6 +428,7 @@ class Statistics(object):
         self.average_speed = 0
         self.time_per_last_iteration = 0
         self.average_time_per_iteration = 0
+        self.learning_rate = 0
 
         self._last_loss = 0
         self._last_time = datetime.now()
@@ -439,7 +440,8 @@ class Statistics(object):
             'current_speed': self.current_speed,
             'average_speed': self.average_speed,
             'time_per_last_iteration': self.time_per_last_iteration,
-            'average_time_per_iteration': self.average_time_per_iteration
+            'average_time_per_iteration': self.average_time_per_iteration,
+            'learning_rate': self.learning_rate
         }
 
     def add_observation(self, loss: float):
@@ -453,6 +455,11 @@ class Statistics(object):
 
             self.average_time_per_iteration = self.average_time_per_iteration + \
                                               ((self.time_per_last_iteration - self.average_time_per_iteration) / self.iterations)
+        else:
+            self.average_speed = self.current_speed
+            self.average_time_per_iteration = self.time_per_last_iteration
+
+        self.learning_rate = self.average_speed / self.average_time_per_iteration
 
         self._last_loss = loss
         self._last_time = datetime.now()

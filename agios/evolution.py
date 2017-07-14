@@ -344,11 +344,11 @@ class BestSampleSaving(object):
     def best(self) -> 'SampleAndItsLoss':
         return self._best_sample_and_loss
 
-    def set_best_if_better_than_current(self, sample: SampleGeneric, loss: float):
+    def _set_best_if_better_than_current(self, sample: SampleGeneric, loss: float):
         if loss < self._best_sample_and_loss.loss:
-            self.force_new_best(sample, loss)
+            self._force_new_best(sample, loss)
 
-    def force_new_best(self, sample: SampleGeneric, loss: float):
+    def _force_new_best(self, sample: SampleGeneric, loss: float):
         self._best_sample_and_loss = SampleAndItsLoss(
             sample=sample,
             loss=loss
@@ -384,7 +384,7 @@ class Solver(StatisticsCollecting, BestSampleSaving):
         self._mutate_population()
         current_generation_best_individual = self._evaluate_best_sample_and_its_loss()
 
-        self.set_best_if_better_than_current(
+        self._set_best_if_better_than_current(
             sample=current_generation_best_individual.sample,
             loss=current_generation_best_individual.loss
         )
@@ -399,7 +399,7 @@ class Solver(StatisticsCollecting, BestSampleSaving):
         )
 
         best_sample = self._executor.resolve_best_samples(self._loss_calculator, self._blueprint, 1)[0]
-        self.force_new_best(
+        self._force_new_best(
             sample=best_sample,
             loss=self._loss_calculator.calculate(best_sample, self._blueprint)
         )

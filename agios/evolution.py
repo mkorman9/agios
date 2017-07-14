@@ -292,15 +292,16 @@ class MultithreadedExecutor(Executor):
                              loss_calculator: 'LossCalculator',
                              blueprint: 'SampleGeneric',
                              best_samples_to_take: int) -> List['SampleGeneric']:
-        population_of_populations = []
-        for executor in self._executors:
-            population_of_populations.extend(executor.population())
+        executors_response = self._execute_in_pool_and_wait_for_results(
+            lambda pool, executor: pool.submit(executor.resolve_best_samples, loss_calculator, blueprint, best_samples_to_take)
+        )
+        best_samples_of_all_executors = [sample for samples in executors_response for sample in samples]
 
-        population_of_populations = sorted(
-            population_of_populations,
+        best_samples_of_all_executors = sorted(
+            best_samples_of_all_executors,
             key=lambda individual: loss_calculator.calculate(individual, blueprint)
         )
-        return population_of_populations[:best_samples_to_take]
+        return best_samples_of_all_executors[:best_samples_to_take]
 
     def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
         self._execute_in_pool_and_wait_for_results(
@@ -320,6 +321,8 @@ class MultithreadedExecutor(Executor):
 
             while not all([task.done() for task in tasks]):
                 time.sleep(0)
+
+            return [task.result() for task in tasks]
 
 
 class StatisticsCollecting(object):

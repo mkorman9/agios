@@ -316,8 +316,6 @@ class SimpleExecutor(Executor):
 
 
 class MultithreadedExecutor(Executor):
-    WAIT_EPSILON = 0.00001
-
     def __init__(self, threads_count: int=4):
         self._threads_count = threads_count
         self._pool = ThreadPoolExecutor(max_workers=threads_count)
@@ -337,7 +335,9 @@ class MultithreadedExecutor(Executor):
                              loss_calculator: 'LossCalculator',
                              blueprint: 'SampleGeneric',
                              best_samples_to_take: int) -> List['SampleGeneric']:
-        executors_response = self._execute_in_pool_and_wait_for_results(
+        executors_response = _execute_in_pool_and_wait_for_results(
+            self._executors,
+            self._pool,
             lambda pool, executor: pool.submit(executor.resolve_best_samples, loss_calculator, blueprint, best_samples_to_take)
         )
         best_samples_of_all_executors = [sample for samples in executors_response for sample in samples]
@@ -349,24 +349,18 @@ class MultithreadedExecutor(Executor):
         return best_samples_of_all_executors[:best_samples_to_take]
 
     def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
-        self._execute_in_pool_and_wait_for_results(
+        _execute_in_pool_and_wait_for_results(
+            self._executors,
+            self._pool,
             lambda pool, executor: pool.submit(executor.perform_crossing_with_best_samples, crosser, best_samples)
         )
 
     def perform_mutation(self, mutator: 'Mutator'):
-        self._execute_in_pool_and_wait_for_results(
+        _execute_in_pool_and_wait_for_results(
+            self._executors,
+            self._pool,
             lambda pool, executor: pool.submit(executor.perform_mutation, mutator)
         )
-
-    def _execute_in_pool_and_wait_for_results(self, operation):
-        tasks = []
-        for executor in self._executors:
-            tasks.append(operation(self._pool, executor))
-
-        while not all([task.done() for task in tasks]):
-            time.sleep(self.WAIT_EPSILON)
-
-        return [task.result() for task in tasks]
 
 
 class StatisticsCollecting(object):
@@ -572,3 +566,22 @@ class CombinedStatistics(Statistics):
         self.time_per_last_iteration = np.average([s.time_per_last_iteration for s in statistics])
         self.average_time_per_iteration = np.average([s.average_time_per_iteration for s in statistics])
         self.learning_rate = np.average([s.learning_rate for s in statistics])
+
+
+# Utils
+
+def _execute_in_pool_and_wait_for_results(tasks, pool, operation):
+    WAIT_EPSILON = 0.00001
+    results = []
+
+    for task in tasks:
+        results.append(
+            operation(pool, task)
+        )
+
+        while not all([result.ready() for result in results]):
+            time.sleep(WAIT_EPSILON)
+
+        return [result.result() for result in results]
+
+    return []

@@ -11,12 +11,12 @@ import numpy as np
 
 class LossCalculator(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def calculate(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> float:
+    def calculate(self, sample1: 'GenericSample', sample2: 'GenericSample') -> float:
         pass
 
 
 class LinearMatrixLossCalculator(LossCalculator):
-    def calculate(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> float:
+    def calculate(self, sample1: 'GenericSample', sample2: 'GenericSample') -> float:
         return np.sum(
             np.abs(sample1.state() - sample2.state())
         ).item()
@@ -36,7 +36,7 @@ class SquaredMeanMatrixLossCalculator(LossCalculator):
 
 class Mutator(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def mutate(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+    def mutate(self, sample: 'GenericSample') -> 'GenericSample':
         pass
 
 
@@ -123,12 +123,12 @@ class SimplePaintbrushMatrixMutator(Mutator):
 
 class Crosser(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def cross(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> 'SampleGeneric':
+    def cross(self, sample1: 'GenericSample', sample2: 'GenericSample') -> 'GenericSample':
         pass
 
 
 class MeanValueMatrixCrosser(Crosser):
-    def cross(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> 'SampleGeneric':
+    def cross(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> 'GenericSample':
         return sample1.factory().create(
             (sample1.state() + sample2.state()) / 2
         )
@@ -136,28 +136,28 @@ class MeanValueMatrixCrosser(Crosser):
 # Sample generics
 
 
-class SampleGeneric(object, metaclass=abc.ABCMeta):
+class GenericSample(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def state(self):
         pass
 
-    def clone(self) -> 'SampleGeneric':
+    def clone(self) -> 'GenericSample':
         return self.factory().clone(self)
 
     def factory(self) -> 'SampleFactory':
         return GenericFactory(self.__class__)
 
-    def mutated(self, mutator: 'Mutator') -> 'SampleGeneric':
+    def mutated(self, mutator: 'Mutator') -> 'GenericSample':
         return mutator.mutate(self)
 
-    def cross_with(self, sample2: 'SampleGeneric', crosser: 'Crosser') -> 'SampleGeneric':
+    def cross_with(self, sample2: 'GenericSample', crosser: 'Crosser') -> 'GenericSample':
         return crosser.cross(self, sample2)
 
-    def calculate_loss_to(self, blueprint: 'SampleGeneric', loss_calculator: LossCalculator):
+    def calculate_loss_to(self, blueprint: 'GenericSample', loss_calculator: LossCalculator):
         return loss_calculator.calculate(self, blueprint)
 
 
-class NumpyArraySample(SampleGeneric):
+class NumpyArraySample(GenericSample):
     def __init__(self, state: np.array):
         self._state = np.copy(state)
 
@@ -167,11 +167,11 @@ class NumpyArraySample(SampleGeneric):
 
 class SampleFactory(object):
     @abc.abstractmethod
-    def create(self, *args, **kwargs) -> 'SampleGeneric':
+    def create(self, *args, **kwargs) -> 'GenericSample':
         pass
 
     @abc.abstractmethod
-    def clone(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+    def clone(self, sample: 'GenericSample') -> 'GenericSample':
         pass
 
 
@@ -179,10 +179,10 @@ class GenericFactory(SampleFactory):
     def __init__(self, proxied_type: callable):
         self.proxied_type = proxied_type
 
-    def create(self, *args, **kwargs) -> 'SampleGeneric':
+    def create(self, *args, **kwargs) -> 'GenericSample':
         return self.proxied_type(*args, **kwargs)
 
-    def clone(self, sample: 'SampleGeneric') -> 'SampleGeneric':
+    def clone(self, sample: 'GenericSample') -> 'GenericSample':
         return self.create(state=sample.state())
 
 
@@ -214,7 +214,7 @@ class ZeroMatrixGenerator(SampleStateGenerator):
 
 class Combiner(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
-    def combine(self, samples: List['SampleGeneric']) -> 'SampleGeneric':
+    def combine(self, samples: List['GenericSample']) -> 'GenericSample':
         pass
 
 
@@ -274,12 +274,12 @@ class Executor(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def resolve_best_samples(self,
                              loss_calculator: 'LossCalculator',
-                             blueprint: 'SampleGeneric',
-                             best_samples_to_take: int) -> List['SampleGeneric']:
+                             blueprint: 'GenericSample',
+                             best_samples_to_take: int) -> List['GenericSample']:
         pass
 
     @abc.abstractmethod
-    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
+    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['GenericSample']):
         pass
 
     @abc.abstractmethod
@@ -303,15 +303,15 @@ class SimpleExecutor(Executor):
 
     def resolve_best_samples(self,
                              loss_calculator: 'LossCalculator',
-                             blueprint: 'SampleGeneric',
-                             best_samples_to_take: int) -> List['SampleGeneric']:
+                             blueprint: 'GenericSample',
+                             best_samples_to_take: int) -> List['GenericSample']:
         self._population = sorted(
             self._population,
             key=lambda individual: loss_calculator.calculate(individual, blueprint)
         )
         return self._population[:best_samples_to_take]
 
-    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
+    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['GenericSample']):
         best_genome_sample = best_samples[0]
         for i in range(1, len(best_samples)):
             best_genome_sample = best_genome_sample.cross_with(best_samples[i], crosser)
@@ -323,7 +323,7 @@ class SimpleExecutor(Executor):
         for i in range(len(self._population)):
             self._population[i] = self._population[i].mutated(mutator)
 
-    def population(self) -> List['SampleGeneric']:
+    def population(self) -> List['GenericSample']:
         return self._population
 
 
@@ -345,8 +345,8 @@ class MultithreadedExecutor(Executor):
 
     def resolve_best_samples(self,
                              loss_calculator: 'LossCalculator',
-                             blueprint: 'SampleGeneric',
-                             best_samples_to_take: int) -> List['SampleGeneric']:
+                             blueprint: 'GenericSample',
+                             best_samples_to_take: int) -> List['GenericSample']:
         executors_response = _execute_in_pool_and_wait_for_results(
             self._executors,
             self._pool,
@@ -360,7 +360,7 @@ class MultithreadedExecutor(Executor):
         )
         return best_samples_of_all_executors[:best_samples_to_take]
 
-    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['SampleGeneric']):
+    def perform_crossing_with_best_samples(self, crosser: 'Crosser', best_samples: List['GenericSample']):
         _execute_in_pool_and_wait_for_results(
             self._executors,
             self._pool,
@@ -393,11 +393,11 @@ class BestSampleSaving(object):
     def best(self) -> 'SampleAndItsLoss':
         return self._best_sample_and_loss
 
-    def _set_best_if_better_than_current(self, sample: SampleGeneric, loss: float):
+    def _set_best_if_better_than_current(self, sample: GenericSample, loss: float):
         if loss < self._best_sample_and_loss.loss:
             self._force_new_best(sample, loss)
 
-    def _force_new_best(self, sample: SampleGeneric, loss: float):
+    def _force_new_best(self, sample: GenericSample, loss: float):
         self._best_sample_and_loss = SampleAndItsLoss(
             sample=sample,
             loss=loss
@@ -418,7 +418,7 @@ class SimpleSolver(GenericSolver):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
-                 blueprint: 'SampleGeneric',
+                 blueprint: 'GenericSample',
                  mutator: 'Mutator',
                  crosser: 'Crosser',
                  loss_calculator: 'LossCalculator',
@@ -483,7 +483,7 @@ class MultidimensionalSolver(GenericSolver):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
-                 blueprints: List['SampleGeneric'],
+                 blueprints: List['GenericSample'],
                  mutator: 'Mutator',
                  crosser: 'Crosser',
                  loss_calculator: 'LossCalculator',

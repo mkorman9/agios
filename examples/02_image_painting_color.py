@@ -7,7 +7,7 @@ if __name__ == '__main__':
     blueprints = extras.load_normalized_image_channels('input/lena.png')
 
     evolution_problem_solver = evolution.MultidimensionalSolver(
-        population_size=100,
+        population_size=25,
         best_samples_to_take=2,
         blueprints=[evolution.NumpyArraySample(b) for b in blueprints],
         mutator=evolution.SimplePaintbrushMatrixMutator((10, 15), (10, 50)),
@@ -15,7 +15,8 @@ if __name__ == '__main__':
         loss_calculator=evolution.LinearMatrixLossCalculator(),
         initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprints[0].shape),
         combiner=evolution.MatrixElementsCombiner(),
-        step_performer=evolution.ParallelStepPerformer()
+        step_performer=evolution.ParallelStepPerformer(3),
+        executor=evolution.MultithreadedExecutor(4)
     )
 
     renderer = windowing.Application(blueprints[0].shape, colorspace)

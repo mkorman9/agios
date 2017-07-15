@@ -12,7 +12,7 @@ if __name__ == '__main__':
         blueprints=[evolution.NumpyArraySample(b) for b in blueprints],
         mutator=evolution.SimplePaintbrushMatrixMutator((10, 15), (10, 50)),
         crosser=evolution.MeanValueMatrixCrosser(),
-        loss_calculator=evolution.SquaredMeanMatrixLossCalculator(),
+        loss_calculator=evolution.LinearMatrixLossCalculator(),
         initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprints[0].shape),
         combiner=evolution.MatrixElementsCombiner(),
         step_performer=evolution.SequentialStepPerformer()

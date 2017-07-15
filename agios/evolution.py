@@ -4,7 +4,6 @@ import random
 import time
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
 from typing import Tuple, List
 
 import numpy as np
@@ -16,6 +15,13 @@ class LossCalculator(object, metaclass=abc.ABCMeta):
         pass
 
 
+class LinearMatrixLossCalculator(LossCalculator):
+    def calculate(self, sample1: 'SampleGeneric', sample2: 'SampleGeneric') -> float:
+        return np.sum(
+            np.abs(sample1.state() - sample2.state())
+        ).item()
+
+
 class SquaredMeanMatrixLossCalculator(LossCalculator):
     def calculate(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> float:
         return np.sqrt(
@@ -23,6 +29,7 @@ class SquaredMeanMatrixLossCalculator(LossCalculator):
                 (sample1.state() - sample2.state()) ** 2
             )
         )
+
 
 # Mutators
 

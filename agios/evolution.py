@@ -203,6 +203,42 @@ class ZeroMatrixGenerator(SampleStateGenerator):
         return np.zeros(self._shape)
 
 
+# Combiners
+
+class Combiner(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def combine(self, samples: List['SampleGeneric']) -> 'SampleGeneric':
+        pass
+
+
+class MatrixElementsCombiner(Combiner):
+    def combine(self, samples: List['NumpyArraySample']) -> 'NumpyArraySample':
+        matrix = []
+        for x in range(samples[0].state().shape[0]):
+            row = []
+            for y in range(samples[0].state().shape[1]):
+                element = []
+                for sample in samples:
+                    element.append(sample.state()[x, y])
+                row.append(element)
+            matrix.append(row)
+        return NumpyArraySample(matrix)
+
+
+# Step performer
+
+class StepPerformer(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def perform_step(self, solvers: List['GenericSolver']):
+        pass
+
+
+class SequentialStepPerformer(StepPerformer):
+    def perform_step(self, solvers: List['GenericSolver']):
+        for solver in solvers:
+            solver.step()
+
+
 # Algorithm itself
 
 SampleAndItsLoss = namedtuple('SampleAndItsLoss', ['sample', 'loss'])
@@ -365,7 +401,7 @@ class GenericSolver(StatisticsCollecting, BestSampleSaving, metaclass=abc.ABCMet
         pass
 
 
-class BasicSolver(GenericSolver):
+class SimpleSolver(GenericSolver):
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
@@ -430,6 +466,46 @@ class BasicSolver(GenericSolver):
         self._executor.perform_mutation(self._mutator)
 
 
+class MultidimensionalSolver(GenericSolver):
+    def __init__(self,
+                 population_size: int,
+                 best_samples_to_take: int,
+                 blueprints: List['SampleGeneric'],
+                 mutator: 'Mutator',
+                 crosser: 'Crosser',
+                 loss_calculator: 'LossCalculator',
+                 initial_sample_state_generator: 'SampleStateGenerator',
+                 combiner: 'Combiner',
+                 step_performer: 'StepPerformer'=SequentialStepPerformer(),
+                 executor: 'Executor' = SimpleExecutor()):
+        GenericSolver.__init__(self)
+
+        self.dimensions = len(blueprints)
+        self._combiner = combiner
+        self._step_performer = step_performer
+        self._solvers = [SimpleSolver(
+            population_size=population_size,
+            best_samples_to_take=best_samples_to_take,
+            blueprint=blueprints[i],
+            mutator=mutator,
+            crosser=crosser,
+            loss_calculator=loss_calculator,
+            initial_sample_state_generator=initial_sample_state_generator,
+            executor=executor
+        ) for i in range(self.dimensions)]
+
+    def step(self):
+        self._step_performer.perform_step(self._solvers)
+
+    def statistics(self) -> 'CombinedStatistics':
+        return CombinedStatistics([s.statistics() for s in self._solvers])
+
+    def best(self) -> 'SampleAndItsLoss':
+        sample = self._combiner.combine([s.best().sample for s in self._solvers])
+        average_loss = np.average([s.best().loss for s in self._solvers])
+        return SampleAndItsLoss(sample, average_loss)
+
+
 # Statistics
 
 
@@ -476,3 +552,16 @@ class Statistics(object):
 
         self._last_loss = loss
         self._last_time = time.time()
+
+
+class CombinedStatistics(Statistics):
+    def __init__(self, statistics: List['Statistics']):
+        Statistics.__init__(self)
+
+        self.iterations = np.average([s.iterations for s in statistics])
+        self.current_loss = np.average([s.current_loss for s in statistics])
+        self.current_speed = np.average([s.current_speed for s in statistics])
+        self.average_speed = np.average([s.average_speed for s in statistics])
+        self.time_per_last_iteration = np.average([s.time_per_last_iteration for s in statistics])
+        self.average_time_per_iteration = np.average([s.average_time_per_iteration for s in statistics])
+        self.learning_rate = np.average([s.learning_rate for s in statistics])

@@ -29,6 +29,12 @@ Blue = ImageFormat(
     pack_function=lambda color: color[2],
     unpack_function=lambda color: color
 )
+CombinedChannels = ImageFormat(
+    symbol='RGB',
+    max_channel_value=0xff,
+    pack_function=lambda color: color,
+    unpack_function=lambda color: color
+)
 
 
 def load_normalized_image(image_path: str, img_format: ImageFormat) -> np.array:
@@ -37,6 +43,18 @@ def load_normalized_image(image_path: str, img_format: ImageFormat) -> np.array:
 
     source_pixels = _normalize_colors(image.getdata(), img_format)
     return _create_matrix_from_pixels_array(image_width, image_height, source_pixels)
+
+
+def load_normalized_image_channels(image_path: str):
+    image = _convert_image_format(Image.open(image_path), 'RGB')
+    image_width, image_height = image.size
+    matrices = []
+
+    for mode in [Red, Green, Blue]:
+        source_pixels = _normalize_colors(image.getdata(), mode)
+        matrices.append(_create_matrix_from_pixels_array(image_width, image_height, source_pixels))
+
+    return matrices
 
 
 def create_rgb_image_from_matrix(matrix: np.array, img_format: ImageFormat) -> Image:

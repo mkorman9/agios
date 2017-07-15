@@ -15,7 +15,7 @@ if __name__ == '__main__':
         loss_calculator=evolution.LinearMatrixLossCalculator(),
         initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprints[0].shape),
         combiner=evolution.MatrixElementsCombiner(),
-        step_performer=evolution.SequentialStepPerformer()
+        step_performer=evolution.ParallelStepPerformer()
     )
 
     renderer = windowing.Application(blueprints[0].shape, colorspace)

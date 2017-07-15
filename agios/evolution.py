@@ -246,6 +246,18 @@ class SequentialStepPerformer(StepPerformer):
             solver.step()
 
 
+class ParallelStepPerformer(StepPerformer):
+    def __init__(self, threads_count: int=2):
+        self._pool = ThreadPoolExecutor(max_workers=threads_count)
+
+    def perform_step(self, solvers: List['GenericSolver']):
+        _execute_in_pool_and_wait_for_results(
+            solvers,
+            self._pool,
+            lambda pool, solver: pool.submit(solver.step)
+        )
+
+
 # Algorithm itself
 
 SampleAndItsLoss = namedtuple('SampleAndItsLoss', ['sample', 'loss'])
@@ -579,9 +591,7 @@ def _execute_in_pool_and_wait_for_results(tasks, pool, operation):
             operation(pool, task)
         )
 
-        while not all([result.ready() for result in results]):
-            time.sleep(WAIT_EPSILON)
+    while not all([result.done() for result in results]):
+        time.sleep(WAIT_EPSILON)
 
-        return [result.result() for result in results]
-
-    return []
+    return [result.result() for result in results]

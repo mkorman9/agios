@@ -1,13 +1,15 @@
 import abc
 import random
-# Loss calculators
 import time
 from collections import namedtuple
 from concurrent.futures import ThreadPoolExecutor
 from typing import Tuple, List
+import pickle
 
 import numpy as np
 
+
+# Loss calculators
 
 class LossCalculator(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -32,7 +34,6 @@ class SquaredMeanMatrixLossCalculator(LossCalculator):
 
 
 # Mutators
-
 
 class Mutator(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -120,7 +121,6 @@ class SimplePaintbrushMatrixMutator(Mutator):
 
 # Crossers
 
-
 class Crosser(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def cross(self, sample1: 'GenericSample', sample2: 'GenericSample') -> 'GenericSample':
@@ -133,8 +133,8 @@ class MeanValueMatrixCrosser(Crosser):
             (sample1.state() + sample2.state()) / 2
         )
 
-# Sample generics
 
+# Sample generics
 
 class GenericSample(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -248,7 +248,8 @@ class SequentialStepPerformer(StepPerformer):
 
 class ParallelStepPerformer(StepPerformer):
     def __init__(self, threads_count: int=2):
-        self._pool = ThreadPoolExecutor(max_workers=threads_count)
+        self._threads_count = threads_count
+        self._pool = self._create_thread_pool()
 
     def perform_step(self, solvers: List['GenericSolver']):
         _execute_in_pool_and_wait_for_results(
@@ -256,6 +257,18 @@ class ParallelStepPerformer(StepPerformer):
             self._pool,
             lambda pool, solver: pool.submit(solver.step)
         )
+
+    def _create_thread_pool(self):
+        return ThreadPoolExecutor(max_workers=self._threads_count)
+
+    def __getstate__(self):
+        fields = dict(self.__dict__)
+        del fields['_pool']
+        return fields
+
+    def __setstate__(self, fields):
+        self.__dict__.update(fields)
+        self._pool = self._create_thread_pool()
 
 
 # Algorithm itself
@@ -330,7 +343,7 @@ class SimpleExecutor(Executor):
 class MultithreadedExecutor(Executor):
     def __init__(self, threads_count: int=4):
         self._threads_count = threads_count
-        self._pool = ThreadPoolExecutor(max_workers=threads_count)
+        self._pool = self._create_thread_pool()
         self._executors = None
 
     def generate_initial_population(self,
@@ -374,6 +387,18 @@ class MultithreadedExecutor(Executor):
             lambda pool, executor: pool.submit(executor.perform_mutation, mutator)
         )
 
+    def _create_thread_pool(self):
+        return ThreadPoolExecutor(max_workers=self._threads_count)
+
+    def __getstate__(self):
+        fields = dict(self.__dict__)
+        del fields['_pool']
+        return fields
+
+    def __setstate__(self, fields):
+        self.__dict__.update(fields)
+        self._pool = self._create_thread_pool()
+
 
 class StatisticsCollecting(object):
     def __init__(self):
@@ -404,7 +429,18 @@ class BestSampleSaving(object):
         )
 
 
-class GenericSolver(StatisticsCollecting, BestSampleSaving, metaclass=abc.ABCMeta):
+class StateSerializing(object):
+    @classmethod
+    def load_from_file(cls, file_path: str):
+        with open(file_path, 'rb') as f:
+            return pickle.load(f)
+
+    def save_to_file(self, file_path: str):
+        with open(file_path, 'wb') as f:
+            pickle.dump(self, f)
+
+
+class GenericSolver(StatisticsCollecting, BestSampleSaving, StateSerializing, metaclass=abc.ABCMeta):
     def __init__(self):
         StatisticsCollecting.__init__(self)
         BestSampleSaving.__init__(self)
@@ -520,7 +556,6 @@ class MultidimensionalSolver(GenericSolver):
 
 
 # Statistics
-
 
 class Statistics(object):
     def __init__(self):

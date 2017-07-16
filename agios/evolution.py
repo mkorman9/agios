@@ -12,6 +12,11 @@ import numpy as np
 # Loss calculators
 
 class LossCalculator(object, metaclass=abc.ABCMeta):
+    """Component meant to calculate the measure of total difference between two samples.
+    The more is the loss, the farther away is the one sample from another. Value of loss does not have to normalized,
+    but must be comparable to another output of calculator of the same type.
+    """
+
     @abc.abstractmethod
     def calculate(self, sample1: 'GenericSample', sample2: 'GenericSample') -> float:
         pass
@@ -36,6 +41,12 @@ class SquaredMeanMatrixLossCalculator(LossCalculator):
 # Mutators
 
 class Mutator(object, metaclass=abc.ABCMeta):
+    """Immutable component meant to create the version of given sample with its internal state modified somehow.
+    This may include any transformations that may result in reducing the loss between the sample and the blueprint.
+
+    Mutator should not interfere in internal state of given sample!
+    """
+
     @abc.abstractmethod
     def mutate(self, sample: 'GenericSample') -> 'GenericSample':
         pass
@@ -122,6 +133,11 @@ class SimplePaintbrushMatrixMutator(Mutator):
 # Crossers
 
 class Crosser(object, metaclass=abc.ABCMeta):
+    """Immutable component meant to create new sample from two given ones.
+    This may include any combinations that may result in reducing the loss between the final sample and the blueprint.
+
+    Crosser should not interfere in internal state of given samples!
+    """
     @abc.abstractmethod
     def cross(self, sample1: 'GenericSample', sample2: 'GenericSample') -> 'GenericSample':
         pass
@@ -137,6 +153,9 @@ class MeanValueMatrixCrosser(Crosser):
 # Sample generics
 
 class GenericSample(object, metaclass=abc.ABCMeta):
+    """Abstract representation of single individual of generation.
+    """
+
     @abc.abstractmethod
     def state(self):
         pass
@@ -166,6 +185,9 @@ class NumpyArraySample(GenericSample):
 
 
 class SampleFactory(object):
+    """Component meant to create an instance of sample of given type.
+    """
+
     @abc.abstractmethod
     def create(self, *args, **kwargs) -> 'GenericSample':
         pass
@@ -189,6 +211,9 @@ class GenericFactory(SampleFactory):
 # State generator
 
 class SampleStateGenerator(object, metaclass=abc.ABCMeta):
+    """Component meant to generate the state of initial samples of population
+    """
+
     @abc.abstractmethod
     def generate(self) -> object:
         pass
@@ -213,6 +238,9 @@ class ZeroMatrixGenerator(SampleStateGenerator):
 # Combiners
 
 class Combiner(object, metaclass=abc.ABCMeta):
+    """Component meant to combine multiple samples into single final sample in multidimensional data processing.
+    """
+
     @abc.abstractmethod
     def combine(self, samples: List['GenericSample']) -> 'GenericSample':
         pass
@@ -235,6 +263,9 @@ class MatrixElementsCombiner(Combiner):
 # Step performer
 
 class StepPerformer(object, metaclass=abc.ABCMeta):
+    """Abstract component meant to separate the step performing strategy in multidimensional data processing.
+    """
+
     @abc.abstractmethod
     def perform_step(self, solvers: List['GenericSolver']):
         pass
@@ -277,6 +308,10 @@ SampleAndItsLoss = namedtuple('SampleAndItsLoss', ['sample', 'loss'])
 
 
 class Executor(object, metaclass=abc.ABCMeta):
+    """Component meant to separate the algorithm itself from the way it is executed.
+    This allows to include multiple custom modifications to algorithm execution.
+    """
+
     @abc.abstractmethod
     def generate_initial_population(self,
                                     samples_factory: 'SampleFactory',
@@ -441,6 +476,9 @@ class StateSerializing(object):
 
 
 class GenericSolver(StatisticsCollecting, BestSampleSaving, StateSerializing, metaclass=abc.ABCMeta):
+    """Main component of the library. Its role is to solve the given problem in the way described by connected components.
+    """
+
     def __init__(self):
         StatisticsCollecting.__init__(self)
         BestSampleSaving.__init__(self)

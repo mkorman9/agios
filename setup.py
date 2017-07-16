@@ -12,7 +12,7 @@ setup(
     packages=['agios'],
     version=version,
     description='Simple genetic algorithms framework for Python',
-    long_description='\n'.join(read('README.md')),
+    long_description='Simple genetic algorithms framework for Python.\n\nhttps://github.com/mkorman9/agios',
     author='Michal Korman',
     author_email='m.korman94@gmail.com',
     license='MIT',

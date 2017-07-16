@@ -8,6 +8,9 @@ agios is an open source, Python 3 library for playing with genetic algorithms. M
    
 TODO list includes:
 * Support for PyCUDA and processing on GPU
+* Support for distributed, multi-node processing
+
+![alt text](.images/mona_lisa.gif)
 
 ## How to install it?
 ```

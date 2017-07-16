@@ -5,7 +5,7 @@ def read(file_path):
     with open(file_path) as f:
         return [line for line in f.readlines() if len(line) > 0]
 
-version = '2017.7.1'
+version = 'dynamic-dev'
 
 setup(
     name='agios',

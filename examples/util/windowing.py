@@ -44,9 +44,6 @@ class Application(object):
 
         image = extras.create_rgb_image_from_matrix(best_result.sample.state(), self._colorspace)
 
-        if algorithm.statistics().iterations % 250 == 0 or algorithm.statistics().iterations == 1:
-            image.save('out/{}.png'.format(algorithm.statistics().iterations))
-
         return pygame.image.fromstring(
             image.tobytes(),
             image.size,

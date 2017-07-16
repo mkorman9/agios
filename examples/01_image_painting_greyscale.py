@@ -7,14 +7,13 @@ if __name__ == '__main__':
     blueprint = extras.load_normalized_image('input/mona_lisa.jpg', colorspace)
 
     evolution_problem_solver = evolution.SimpleSolver(
-        population_size=25,
+        population_size=100,
         best_samples_to_take=2,
         blueprint=evolution.NumpyArraySample(blueprint),
         mutator=evolution.SimplePaintbrushMatrixMutator((10, 15), (10, 50)),
         crosser=evolution.MeanValueMatrixCrosser(),
         loss_calculator=evolution.SquaredMeanMatrixLossCalculator(),
-        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape),
-        executor=evolution.MultithreadedExecutor(4)
+        initial_sample_state_generator=evolution.RandomMatrixGenerator(blueprint.shape)
     )
 
     renderer = windowing.Application(blueprint.shape, colorspace)

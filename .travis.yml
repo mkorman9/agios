@@ -1,0 +1,21 @@
+language: python
+
+python:
+- '3.5'
+
+env:
+  global:
+    - VERSION_BASE="$(date +'%Y.%m')"
+
+install:
+  - export VERSION="${VERSION_BASE}.${TRAVIS_BUILD_NUMBER}"
+  - if [ "$TRAVIS_TAG" != '' ]; then export VERSION="$TRAVIS_TAG"; fi
+  - sed -i -e "s/dynamic-dev/${VERSION}/g" setup.py
+  - pip install .
+  - pip install -r test-requirements.txt
+
+script:
+  - nosetests
+
+notifications:
+  email: false

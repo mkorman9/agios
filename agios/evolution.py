@@ -15,6 +15,8 @@ class LossCalculator(object, metaclass=abc.ABCMeta):
     """Component meant to calculate the measure of total difference between two samples.
     The more is the loss, the farther away is the one sample from another. Value of loss does not have to normalized,
     but must be comparable to another output of calculator of the same type.
+
+    LossCalculator should not interfere in internal state of given samples!
     """
 
     @abc.abstractmethod
@@ -23,13 +25,21 @@ class LossCalculator(object, metaclass=abc.ABCMeta):
 
 
 class LinearMatrixLossCalculator(LossCalculator):
-    def calculate(self, sample1: 'GenericSample', sample2: 'GenericSample') -> float:
+    """LossCalculator operating on NumpyArraySample which calculate total difference between every pair of elements,
+    of given matrices.
+    """
+
+    def calculate(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> float:
         return np.sum(
             np.abs(sample1.state() - sample2.state())
         ).item()
 
 
 class SquaredMeanMatrixLossCalculator(LossCalculator):
+    """LossCalculator operating on NumpyArraySample which calculate total squared difference between every pair of elements,
+        of given matrices. Result is square root of calculation.
+    """
+
     def calculate(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> float:
         return np.sqrt(
             np.sum(
@@ -53,6 +63,9 @@ class Mutator(object, metaclass=abc.ABCMeta):
 
 
 class RandomMatrixFieldChangeMutator(Mutator):
+    """Mutator operating on NumpyArraySample, which modifies single element of given array with random value
+    """
+
     def mutate(self, sample: 'NumpyArraySample') -> 'NumpyArraySample':
         sample_to_create = sample.clone()
         matrix = sample_to_create.state()
@@ -65,6 +78,9 @@ class RandomMatrixFieldChangeMutator(Mutator):
 
 
 class RandomMatrixAreasMutator(Mutator):
+    """Mutator operating on NumpyArraySample, which "draws" rectangle of random values and random size, on matrix.
+    """
+
     def __init__(self, horizontal_size_range: Tuple[int, int], vertical_size_range: Tuple[int, int]):
         self._horizontal_size_range = horizontal_size_range
         self._vertical_size_range = vertical_size_range
@@ -85,6 +101,10 @@ class RandomMatrixAreasMutator(Mutator):
 
 
 class SimplePaintbrushMatrixMutator(Mutator):
+    """Mutator operating on NumpyArraySample, which uses primitive paintbrush implementation of random value, length and
+    thickness.
+    """
+
     def __init__(self, brush_widths_range=(1, 4), moves_length_range=(1, 10)):
         self._brush_widths_range = brush_widths_range
         self._moves_length_range = moves_length_range
@@ -144,6 +164,9 @@ class Crosser(object, metaclass=abc.ABCMeta):
 
 
 class MeanValueMatrixCrosser(Crosser):
+    """Crosser that operates on NumpyArraySample, and calculates average value of the given samples for every matrix element.
+    """
+
     def cross(self, sample1: 'NumpyArraySample', sample2: 'NumpyArraySample') -> 'GenericSample':
         return sample1.factory().create(
             (sample1.state() + sample2.state()) / 2
@@ -163,8 +186,8 @@ class GenericSample(object, metaclass=abc.ABCMeta):
     def clone(self) -> 'GenericSample':
         return self.factory().clone(self)
 
-    def factory(self) -> 'SampleFactory':
-        return GenericFactory(self.__class__)
+    def factory(self) -> 'GenericFactory':
+        return SimpleFactory(self.__class__)
 
     def mutated(self, mutator: 'Mutator') -> 'GenericSample':
         return mutator.mutate(self)
@@ -177,6 +200,9 @@ class GenericSample(object, metaclass=abc.ABCMeta):
 
 
 class NumpyArraySample(GenericSample):
+    """Implementation of GenericSample, fit to solve problems related to series of data
+    """
+
     def __init__(self, state: np.array):
         self._state = np.copy(state)
 
@@ -184,7 +210,7 @@ class NumpyArraySample(GenericSample):
         return self._state
 
 
-class SampleFactory(object):
+class GenericFactory(object, metaclass=abc.ABCMeta):
     """Component meant to create an instance of sample of given type.
     """
 
@@ -197,7 +223,11 @@ class SampleFactory(object):
         pass
 
 
-class GenericFactory(SampleFactory):
+class SimpleFactory(GenericFactory):
+    """Default implementation of GenericFactory,
+    assuming that given sample type expects its state passed through constructor
+    """
+
     def __init__(self, proxied_type: callable):
         self.proxied_type = proxied_type
 
@@ -220,6 +250,9 @@ class SampleStateGenerator(object, metaclass=abc.ABCMeta):
 
 
 class RandomMatrixGenerator(SampleStateGenerator):
+    """SampleStateGenerator generating random matrix of given size
+    """
+
     def __init__(self, shape=(100, 100)):
         self._shape = shape
 
@@ -228,6 +261,9 @@ class RandomMatrixGenerator(SampleStateGenerator):
 
 
 class ZeroMatrixGenerator(SampleStateGenerator):
+    """SampleStateGenerator generating matrix of given size, full of zeros
+    """
+
     def __init__(self, shape=(100, 100)):
         self._shape = shape
 
@@ -239,6 +275,9 @@ class ZeroMatrixGenerator(SampleStateGenerator):
 
 class Combiner(object, metaclass=abc.ABCMeta):
     """Component meant to combine multiple samples into single final sample in multidimensional data processing.
+    Its meant to combine multiple data dimensions into single final result.
+
+    Combiner should not interfere in internal state of given samples!
     """
 
     @abc.abstractmethod
@@ -247,6 +286,10 @@ class Combiner(object, metaclass=abc.ABCMeta):
 
 
 class MatrixElementsCombiner(Combiner):
+    """Implementation of Combiner that operates on NumpyArraySample,
+    which creates a tuple of all values for each matrix element. All given matrix must have the same size.
+    """
+
     def combine(self, samples: List['NumpyArraySample']) -> 'NumpyArraySample':
         matrix = []
         for x in range(samples[0].state().shape[0]):
@@ -263,7 +306,10 @@ class MatrixElementsCombiner(Combiner):
 # Step performer
 
 class StepPerformer(object, metaclass=abc.ABCMeta):
-    """Abstract component meant to separate the step performing strategy in multidimensional data processing.
+    """Abstract component meant to separate the step performing strategy and algorithm flow,
+    in multidimensional data processing.
+
+    StepPerformer should not interfere in internal state of given solvers!
     """
 
     @abc.abstractmethod
@@ -272,12 +318,18 @@ class StepPerformer(object, metaclass=abc.ABCMeta):
 
 
 class SequentialStepPerformer(StepPerformer):
+    """StepPerformer that performs all steps sequentially, in given order.
+    """
+
     def perform_step(self, solvers: List['GenericSolver']):
         for solver in solvers:
             solver.step()
 
 
 class ParallelStepPerformer(StepPerformer):
+    """StepsPerformer that performs all given steps at once, in parallel.
+    """
+
     def __init__(self, threads_count: int=2):
         self._threads_count = threads_count
         self._pool = self._create_thread_pool()
@@ -314,7 +366,7 @@ class Executor(object, metaclass=abc.ABCMeta):
 
     @abc.abstractmethod
     def generate_initial_population(self,
-                                    samples_factory: 'SampleFactory',
+                                    samples_factory: 'GenericFactory',
                                     initial_sample_state_generator: 'SampleStateGenerator',
                                     population_size: int):
         pass
@@ -336,11 +388,14 @@ class Executor(object, metaclass=abc.ABCMeta):
 
 
 class SimpleExecutor(Executor):
+    """Simple implementation of Executor, operating on single population, trained in single flow.
+    """
+
     def __init__(self):
         self._population = None
 
     def generate_initial_population(self,
-                                    samples_factory: 'SampleFactory',
+                                    samples_factory: 'GenericFactory',
                                     initial_sample_state_generator: 'SampleStateGenerator',
                                     population_size: int):
         self._population = []
@@ -376,13 +431,17 @@ class SimpleExecutor(Executor):
 
 
 class MultithreadedExecutor(Executor):
+    """Implementation of Executor which hold N populations. Each one is trained in separate thread. After each step,
+    samples are shared and crossed between populations.
+    """
+
     def __init__(self, threads_count: int=4):
         self._threads_count = threads_count
         self._pool = self._create_thread_pool()
         self._executors = None
 
     def generate_initial_population(self,
-                                    samples_factory: 'SampleFactory',
+                                    samples_factory: 'GenericFactory',
                                     initial_sample_state_generator: 'SampleStateGenerator',
                                     population_size: int):
         self._executors = []
@@ -436,6 +495,9 @@ class MultithreadedExecutor(Executor):
 
 
 class StatisticsCollecting(object):
+    """Interface for collecting execution statistics
+    """
+
     def __init__(self):
         self._statistics = Statistics()
 
@@ -447,6 +509,9 @@ class StatisticsCollecting(object):
 
 
 class BestSampleSaving(object):
+    """Interface for saving best result from each population
+    """
+
     def __init__(self):
         self._best_sample_and_loss = None
 
@@ -465,6 +530,9 @@ class BestSampleSaving(object):
 
 
 class StateSerializing(object):
+    """Interface for serializing data to and from a file.
+    """
+
     @classmethod
     def load_from_file(cls, file_path: str):
         with open(file_path, 'rb') as f:
@@ -489,6 +557,9 @@ class GenericSolver(StatisticsCollecting, BestSampleSaving, StateSerializing, me
 
 
 class SimpleSolver(GenericSolver):
+    """Simple implementation of GenericSolver for solving problems related to single dimension data.
+    """
+
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
@@ -554,6 +625,9 @@ class SimpleSolver(GenericSolver):
 
 
 class MultidimensionalSolver(GenericSolver):
+    """Implementation of GenericSolver for solving problems related to multi dimension data.
+    """
+
     def __init__(self,
                  population_size: int,
                  best_samples_to_take: int,
@@ -596,6 +670,9 @@ class MultidimensionalSolver(GenericSolver):
 # Statistics
 
 class Statistics(object):
+    """Simple object for storing execution statistics
+    """
+
     def __init__(self):
         self.iterations = 0
         self.current_loss = 0
@@ -641,6 +718,9 @@ class Statistics(object):
 
 
 class CombinedStatistics(Statistics):
+    """Object holding average values from multiple source Statistics objects.
+    """
+
     def __init__(self, statistics: List['Statistics']):
         Statistics.__init__(self)
 
